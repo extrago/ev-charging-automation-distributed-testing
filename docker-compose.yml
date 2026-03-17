@@ -81,13 +81,21 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     networks:
       - ev-net
+    healthcheck:
+      # 'ruok' is the standard Zookeeper 4-letter readiness probe — responds 'imok' when ready
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   # Kafka: High-performance message broker for telemetry events
   kafka:
     image: confluentinc/cp-kafka:7.3.0
     container_name: ev_kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy # Kafka must not start until Zookeeper is accepting connections
     ports:
       - "9092:9092" # Port for Host access (Playwright Producer)
     environment:
@@ -102,8 +110,8 @@ services:
     networks:
       - ev-net
     healthcheck:
-      # kafka-broker-api-versions is the canonical Confluent readiness probe
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      # CMD-SHELL lets the shell resolve kafka-broker-api-versions on $PATH
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
       interval: 10s
       timeout: 10s
       retries: 10
