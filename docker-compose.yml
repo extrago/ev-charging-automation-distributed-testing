@@ -74,12 +74,12 @@ services:
     networks:
       - ev-net
     healthcheck:
-      # Simple and bulletproof port check
-      test: ["CMD-SHELL", "nc -z localhost 2181 || exit 1"]
-      interval: 5s
+      # Using native Zookeeper shell instead of netcat (nc is not installed in CP images)
+      test: ["CMD-SHELL", "zookeeper-shell localhost:2181 ls / || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 15
-      start_period: 15s
+      retries: 10
+      start_period: 20s
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -106,9 +106,9 @@ services:
     networks:
       - ev-net
     healthcheck:
-      # Simple and bulletproof port check
-      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
-      interval: 5s
+      # Using native Kafka topics command to ensure broker is fully responding
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 10
       start_period: 30s
