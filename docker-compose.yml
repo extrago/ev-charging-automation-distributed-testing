@@ -1,13 +1,11 @@
 version: '3.8'
 
-# Custom bridge network for isolated and secure service communication
 networks:
   ev-net:
     driver: bridge
 
 services:
   # --- DATABASE LAYER ---
-  # PostGIS: Extends PostgreSQL with support for geographic objects
   db:
     image: postgis/postgis:15-3.3
     container_name: ev_postgis
@@ -16,14 +14,12 @@ services:
       POSTGRES_PASSWORD: ev_secret
       POSTGRES_DB: ev_charging
     volumes:
-      # Automatically executes init.sql to setup schema and spatial indices
       - ./docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432" # Exposed for Playwright DB assertions and DBeaver
+      - "5432:5432"
     networks:
       - ev-net
     healthcheck:
-      # Critical: Ensures the database is ready to accept connections
       test: ["CMD-SHELL", "pg_isready -U ev_user -d ev_charging"]
       interval: 5s
       timeout: 5s
@@ -31,40 +27,32 @@ services:
       start_period: 10s
 
   # --- APPLICATION LAYER ---
-  # The Backend API under test
   api:
     build:
       context: ./docker/api
       dockerfile: Dockerfile
     container_name: ev_api
     environment:
-      # Database Connection Strings
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: ev_user
       DB_PASSWORD: ev_secret
       DB_NAME: ev_charging
-      
-      # Kafka Configuration (Unified to fix Consumer silence)
       KAFKA_BROKER: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      
-      # Topic Mapping: Ensures API listens to the same topic used by Playwright
       KAFKA_TOPIC: truck-telemetry
       TELEMETRY_TOPIC: truck-telemetry
-      
       PORT: 3000
     ports:
-      - "3000:3000" # Main entry point for API testing
+      - "3000:3000"
     networks:
       - ev-net
     depends_on:
       db:
-        condition: service_healthy # Wait for PostGIS to be ready
+        condition: service_healthy
       kafka:
-        condition: service_healthy # Ensure Kafka is fully ready before API starts listening
+        condition: service_healthy
     healthcheck:
-      # Verifies the API is alive and responding to health probes
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
       timeout: 5s
@@ -72,45 +60,47 @@ services:
       start_period: 15s
 
   # --- MESSAGING LAYER ---
-  # Zookeeper: Handles cluster coordination and leader election
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
     container_name: ev_zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    # إضافة المنفذ هنا تضمن استقرار الربط في بيئة الـ CI
+    ports:
+      - "2181:2181"
     networks:
       - ev-net
     healthcheck:
-      # 'ruok' is the standard Zookeeper 4-letter readiness probe — responds 'imok' when ready
       test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
 
-  # Kafka: High-performance message broker for telemetry events
   kafka:
     image: confluentinc/cp-kafka:7.3.0
     container_name: ev_kafka
     depends_on:
       zookeeper:
-        condition: service_healthy # Kafka must not start until Zookeeper is accepting connections
+        condition: service_healthy
     ports:
-      - "9092:9092" # Port for Host access (Playwright Producer)
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # Listener Strategy: 29092 for Internal (API), 9092 for External (Tests)
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://127.0.0.1:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # --- إعدادات الاستقرار في بيئة الـ CI (Single Node) ---
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     networks:
       - ev-net
     healthcheck:
-      # CMD-SHELL lets the shell resolve kafka-broker-api-versions on $PATH
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
       interval: 10s
       timeout: 10s
