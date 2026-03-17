@@ -11,7 +11,6 @@ jobs:
         timeout-minutes: 15
         runs-on: ubuntu-latest
 
-
         steps:
             - uses: actions/checkout@v4
 
@@ -25,7 +24,7 @@ jobs:
               run: npm ci
 
             - name: Start Infrastructure (Docker Compose)
-              run: docker-compose up -d --build
+              run: docker compose up -d --build
 
             - name: Wait for API Readiness
               # This uses your existing wait script to ensure DB/Kafka are ready
@@ -55,4 +54,4 @@ jobs:
 
             - name: Stop Containers
               if: always()
-              run: docker-compose down
+              run: docker compose down
