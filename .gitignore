@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Secrets & Environment
+.env
+
+# Reports & Logs
+playwright-report/
+reports/
+test-results/
+*.log
+node_modules/
+allure-results/
+allure-report/
+playwright-report/
+test-results/
+dist/
+# Docker Volumes (Temporary data)
+pgdata/

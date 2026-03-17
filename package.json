@@ -1,0 +1,29 @@
+{
+  "name": "ev-charging-station-api-test-suite",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Playwright + TypeScript API automation for EV Charging Station Spatial Search",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:spatial": "playwright test tests/spatial.spec.ts",
+    "test:negative": "playwright test tests/negative.spec.ts",
+    "test:concurrency": "playwright test tests/concurrency.spec.ts",
+    "typecheck": "tsc --noEmit",
+    "docker:up": "docker-compose up -d --build",
+    "docker:down": "docker-compose down -v",
+    "docker:logs": "docker-compose logs -f",
+    "docker:wait": "node scripts/wait-for-api.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.0",
+    "@types/node": "^20.11.0",
+    "@types/pg": "^8.18.0",
+    "allure-playwright": "^3.6.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.20.0"
+  }
+}
