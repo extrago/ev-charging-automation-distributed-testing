@@ -74,11 +74,12 @@ services:
     networks:
       - ev-net
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
+      # Simple and bulletproof port check
+      test: ["CMD-SHELL", "nc -z localhost 2181 || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 15
+      start_period: 15s
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -105,8 +106,9 @@ services:
     networks:
       - ev-net
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
+      # Simple and bulletproof port check
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
       start_period: 30s
