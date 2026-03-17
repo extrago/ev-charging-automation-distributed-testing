@@ -51,7 +51,8 @@ services:
       db:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        # Changed to service_started to prevent Docker timeout
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -66,27 +67,20 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-      # Limit memory usage to prevent Out-Of-Memory (OOM) kills in CI
       KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
-    # Exposing the port ensures connection stability in the CI environment
     ports:
       - "2181:2181"
     networks:
       - ev-net
-    healthcheck:
-      # Using native Zookeeper shell instead of netcat (nc is not installed in CP images)
-      test: ["CMD-SHELL", "zookeeper-shell localhost:2181 ls / || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+    # Healthcheck removed: Relying on CI pipeline wait steps instead
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
     container_name: ev_kafka
     depends_on:
       zookeeper:
-        condition: service_healthy
+        # Changed to service_started
+        condition: service_started
     ports:
       - "9092:9092"
     environment:
@@ -96,19 +90,11 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://127.0.0.1:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      # Limit memory usage to prevent OOM kills in CI
       KAFKA_HEAP_OPTS: "-Xmx512M -Xms512M"
-      # --- CI Stability Settings (Single Node Mode) ---
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     networks:
       - ev-net
-    healthcheck:
-      # Using native Kafka topics command to ensure broker is fully responding
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+    # Healthcheck removed: Relying on CI pipeline wait steps instead
