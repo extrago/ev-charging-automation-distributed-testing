@@ -31,6 +31,11 @@ jobs:
               # Using 'docker compose' (V2) for modern CI runners
               run: docker compose up -d --build
 
+            - name: Show Docker Logs (If Start Fails)
+              # Crucial for debugging OOM or container crash issues in CI
+              if: failure()
+              run: docker compose logs
+
             - name: Wait for Kafka Readiness
               # Polling port 9092 via TCP until the broker is ready
               run: |
