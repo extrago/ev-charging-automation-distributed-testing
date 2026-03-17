@@ -62,7 +62,7 @@ services:
       db:
         condition: service_healthy # Wait for PostGIS to be ready
       kafka:
-        condition: service_started # Ensure Kafka is up before API starts listening
+        condition: service_healthy # Ensure Kafka is fully ready before API starts listening
     healthcheck:
       # Verifies the API is alive and responding to health probes
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
@@ -101,3 +101,10 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - ev-net
+    healthcheck:
+      # kafka-broker-api-versions is the canonical Confluent readiness probe
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s

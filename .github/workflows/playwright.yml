@@ -26,15 +26,31 @@ jobs:
             - name: Start Infrastructure (Docker Compose)
               run: docker compose up -d --build
 
+            - name: Wait for Kafka Readiness
+              # Polls port 9092 via TCP — Confluent Kafka takes 30-60s to fully boot in CI
+              run: |
+                  echo "Waiting for Kafka to be ready on localhost:9092..."
+                  for i in $(seq 1 30); do
+                    if nc -z localhost 9092 2>/dev/null; then
+                      echo "✅ Kafka is ready after ${i} attempts"
+                      exit 0
+                    fi
+                    echo "Attempt ${i}/30 — Kafka not yet ready, retrying in 5s..."
+                    sleep 5
+                  done
+                  echo "❌ Kafka failed to become ready in time"
+                  exit 1
+
             - name: Wait for API Readiness
-              # This uses your existing wait script to ensure DB/Kafka are ready
+              # Polls GET /health until the API responds 200
               run: npm run docker:wait
 
             - name: Run Playwright Tests
               run: npx playwright test
               env:
-                  # Override env vars for CI if necessary
                   API_BASE_URL: http://localhost:3000
+                  # Suppress KafkaJS v2 partitioner migration warning
+                  KAFKAJS_NO_PARTITIONER_WARNING: "1"
 
             - name: Upload Playwright Report
               if: always()
